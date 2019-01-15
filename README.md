@@ -1,0 +1,1 @@
+# Repository for FreeBSD IRC channels plugins and bots
