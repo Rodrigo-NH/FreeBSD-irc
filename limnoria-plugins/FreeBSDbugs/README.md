@@ -16,6 +16,6 @@ Sets channel active flag: freebsdbugs setactive #somechannel
 
 Sets channel inactive flag: freebsdbugs setinactive #somechannel
 
-Change channel update interval(seconds): freebsdbugs setinterval 60
+Change channel update interval(seconds): freebsdbugs setinterval #somechannel 60
 
 List registered channels and last know bug in DB: freebsdbugs list

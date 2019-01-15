@@ -10,7 +10,6 @@
 ###
 
 
-#from supybot import utils, plugins, ircutils, callbacks, ircmsgs
 from supybot import utils, plugins, ircutils, callbacks, ircmsgs
 from supybot.commands import *
 import os, sqlite3, lxml.html, threading, time
@@ -94,6 +93,7 @@ class FreeBSDbugs(callbacks.Plugin):
         while self.loopthread:
             time_ = int(time.time())
             while self.locklist:
+                time.sleep(0.01)
                 pass
             self._locklist()
             for x in range(0, len(self.channelscontrol)):
@@ -108,14 +108,13 @@ class FreeBSDbugs(callbacks.Plugin):
                     t = threading.Thread(target=self._updatechannel, args=(irc, x, list_,))
                     t.start()
             self._locklist()
-
-
             time.sleep(1)
 
 
     def _updatechannel(self, irc, listindex, chancontrol ):
         #print chancontrol
         while self.locklist:
+            time.sleep(0.01)
             pass
         self._locklist()
         v0 = chancontrol[0]  # channel
@@ -179,6 +178,7 @@ class FreeBSDbugs(callbacks.Plugin):
 
 
         while self.locklist:
+            time.sleep(0.01)
             pass
         self._locklist()
         for x in range(0, len(self.channelscontrol)):
@@ -255,6 +255,7 @@ class FreeBSDbugs(callbacks.Plugin):
                 SQLargs = (channel, 1, updateInterval)
                 self._SQLexec(SQL, SQLargs)
                 while self.locklist:
+                    time.sleep(0.01)
                     pass
                 self._locklist()
                 v0 = channel  # channel
@@ -280,6 +281,7 @@ class FreeBSDbugs(callbacks.Plugin):
             SQLargs = (channel,)
             self._SQLexec(SQL, SQLargs)
             while self.locklist:
+                time.sleep(0.01)
                 pass
             self._locklist()
             for x in range(0, len(self.channelscontrol)):
@@ -292,7 +294,6 @@ class FreeBSDbugs(callbacks.Plugin):
         else:
             irc.reply("Channel does not exist in DB.", prefixNick=True)
 
-
     remove = wrap(remove, ['somethingWithoutSpaces'])
 
 
@@ -304,6 +305,7 @@ class FreeBSDbugs(callbacks.Plugin):
             SQLargs = (0, channel)
             self._SQLexec(SQL, SQLargs)
             while self.locklist:
+                time.sleep(0.01)
                 pass
             self._locklist()
             for x in range(0, len(self.channelscontrol)):
@@ -314,7 +316,6 @@ class FreeBSDbugs(callbacks.Plugin):
             irc.reply("Channel set inactive.", prefixNick=True)
         else:
             irc.reply("Channel does not exist in DB.", prefixNick=True)
-
 
     setinactive = wrap(setinactive, ['somethingWithoutSpaces'])
 
@@ -327,6 +328,7 @@ class FreeBSDbugs(callbacks.Plugin):
             SQLargs = (1, channel)
             self._SQLexec(SQL, SQLargs)
             while self.locklist:
+                time.sleep(0.01)
                 pass
             self._locklist()
             for x in range(0, len(self.channelscontrol)):
@@ -355,6 +357,7 @@ class FreeBSDbugs(callbacks.Plugin):
                 SQLargs = (updateInterval, channel)
                 self._SQLexec(SQL, SQLargs)
                 while self.locklist:
+                    time.sleep(0.01)
                     pass
                 self._locklist()
                 for x in range(0, len(self.channelscontrol)):
@@ -385,7 +388,6 @@ class FreeBSDbugs(callbacks.Plugin):
         irc.reply(lastknowbug_, prefixNick=True)
 
     list = wrap(list)
-
 
 
 Class = FreeBSDbugs
