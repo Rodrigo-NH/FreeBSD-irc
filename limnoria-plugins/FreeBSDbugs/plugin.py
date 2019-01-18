@@ -68,12 +68,15 @@ class FreeBSDbugs(callbacks.Plugin):
             self.channelscontrol.append(list_)
             if v1 == 1:
                 g = threading.Thread(target=self._getLastBug, args=(irc, v0,))
+                g.setDaemon(True)
                 g.start()
         t = threading.Thread(target = self._checkchannels ,args=(irc, ))
+        t.setDaemon(True)
         t.start()
 
 
     def die(self):
+        self.locklist = False
         self.loopthread = False
         SQL = 'UPDATE lastknowbug SET lastknowbug = ?'
         SQLargs = (self.lastknowbug,)
@@ -106,6 +109,7 @@ class FreeBSDbugs(callbacks.Plugin):
                     list_ = [v0, v1, v2, time_, v4]
                     self.channelscontrol[x] = list_
                     t = threading.Thread(target=self._updatechannel, args=(irc, x, list_,))
+                    t.setDaemon(True)
                     t.start()
             self._locklist()
             time.sleep(1)
@@ -134,7 +138,6 @@ class FreeBSDbugs(callbacks.Plugin):
                     notice = notice.encode('utf8')
                     if self.loopthread:
                         irc.queueMsg(ircmsgs.privmsg(v0.encode('utf8'), notice))  # notice.encode() must be outside of ircmsgs.privmsg here
-                        #print notice
                 else:
                     lastseen -= 1
                     reachend = 1
@@ -152,7 +155,7 @@ class FreeBSDbugs(callbacks.Plugin):
         ct1 = 0
         ct2 = 0
         notAlready = True
-        while notAlready and self.loopthread:
+        while notAlready:
             #print "maxbug: " + str(maxbug)
             #print "minbug: " + str(minbug)
             url = 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=' + str(maxbug)
@@ -268,6 +271,7 @@ class FreeBSDbugs(callbacks.Plugin):
                 self._locklist()
                 irc.reply("Channel added and activated.", prefixNick=True)
                 g = threading.Thread(target=self._getLastBug, args=(irc, channel,))
+                g.setDaemon(True)
                 g.start()
 
     add = wrap(add, ['inChannel', 'int'])
@@ -339,6 +343,7 @@ class FreeBSDbugs(callbacks.Plugin):
             self._locklist()
             irc.reply("Channel set active.", prefixNick=True)
             g = threading.Thread(target=self._getLastBug, args=(irc, channel,))
+            g.setDaemon(True)
             g.start()
         else:
             irc.reply("Channel does not exist in DB.", prefixNick=True)
@@ -373,7 +378,7 @@ class FreeBSDbugs(callbacks.Plugin):
 
 
     def list(self, irc, msg, args):
-        """List registered channels"""
+        """List registered channels and last know bugzilla bug in DB"""
         SQL = 'SELECT * FROM registry'
         cursor = self._SQLexec(SQL, -1)
         for x in cursor:
