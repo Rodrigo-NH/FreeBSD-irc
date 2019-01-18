@@ -142,7 +142,7 @@ class FreeBSDbugs(callbacks.Plugin):
                 self.lastknowbug = lastseen
                 self.channelscontrol[listindex] = list_
             except:
-                pass
+                lastseen -= 1
         self._locklist()
 
 
