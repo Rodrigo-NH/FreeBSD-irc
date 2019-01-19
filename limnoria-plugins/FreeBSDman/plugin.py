@@ -74,6 +74,12 @@ class FreeBSDman(callbacks.Plugin):
             if not command_[1].isdigit():
                 uoption = "wrong"
 
+
+        # Syntax check 4th step
+        if uoption != "wrong" and command_[0][:1] == "@":
+            uoption = "wrong"
+
+
         # Continue
         if uoption != "wrong":
             if uoption == "sektion" or uoption == "full":
@@ -110,15 +116,25 @@ class FreeBSDman(callbacks.Plugin):
                         break
 
                 queryresult = ""
+                nickprefix = False
                 if uoption == "simple" or uoption == "sektion":
                     queryresult = command_[0].lower() + sektion + " - " + odescription + urldir
                 elif uoption == "full":
-                    queryresult = command_[2][1:] + ": " + command_[
-                        0].lower() + sektion + " - " + odescription + urldir
+                    if command_[2][1:] in irc.state.channels[msg.args[0]].users:
+                        queryresult = command_[2][1:] + ": " + command_[
+                            0].lower() + sektion + " - " + odescription + urldir
+                    else:
+                        queryresult = "'" + command_[2][1:] + "'" + " is not in the channel."
+                        nickprefix = True
                 elif uoption == "redirect":
-                    queryresult = command_[1][1:] + ": " + command_[
-                        0].lower() + sektion + " - " + odescription + urldir
-                irc.reply(queryresult, prefixNick=False)
+                    if command_[1][1:] in irc.state.channels[msg.args[0]].users:
+                        queryresult = command_[1][1:] + ": " + command_[
+                            0].lower() + sektion + " - " + odescription + urldir
+                    else:
+                        queryresult = "'" + command_[1][1:] + "'" + " is not in the channel."
+                        nickprefix = True
+
+                irc.reply(queryresult, prefixNick=nickprefix)
 
         else:
             irc.reply("Syntax error.", prefixNick=True)
