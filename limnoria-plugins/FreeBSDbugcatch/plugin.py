@@ -9,7 +9,7 @@
 #
 ###
 
-from supybot import utils, plugins, ircutils, callbacks
+from supybot import utils, plugins, ircutils, callbacks, conf
 from supybot.commands import *
 import supybot.ircmsgs as ircmsgs
 import re
@@ -34,7 +34,7 @@ if not (sqlite3 or sqlalchemy):
 
 
 class FreeBSDbugcatch(callbacks.Plugin):
-    """Catch PR ID on IRC talk and returns Summary + Link"""
+    """Catch or direct command PR ID on IRC talk and returns Summary + Link"""
 
     def __init__(self, irc):
         self.__parent = super(FreeBSDbugcatch, self)
@@ -45,56 +45,81 @@ class FreeBSDbugcatch(callbacks.Plugin):
 
 
     def listCommands(self):
-        commands = ['add', 'list', 'remove']
+        commands = ['add', 'list', 'remove', 'issue', 'bug']
         return commands
-
 
     def inFilter(self, irc, msg):
         self.filtering = True
         self._catchbug(irc, msg)
         return msg
 
-
     def _catchbug(self, irc, msg):
-        """<command>"""
-
-        channel = msg.args[0]
-        res = self._checkDBhasChannel(channel)
-        if res is True:
-            res = re.search('((pr|issue|bug) #(\d+))|((pr|issue|bug)#(\d+))|((pr|issue|bug)(\d+))|((pr|issue|bug) (\d+))', msg.args[1], flags=re.IGNORECASE)
-            bugn = 0
-            result = None
-            print res
-
+        prefixChars = list(conf.supybot.reply.whenAddressedBy.chars())
+        ct = False
+        for x in prefixChars: # Check user issued commands directly and avoid automatic parsing
+            regex_ = r"^(" + re.escape(x) + r")"
+            res = re.search(regex_, msg.args[1])
             if res:
-                reslenght = res.groups().__len__()
-                for x in range(0, reslenght):
-                    val = res.groups()[x]
-                    if val is not None:
-                        if unicode(val).isnumeric():
-                            bugn=val
+                ct = True
 
-            if bugn != 0:
-                url = 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id='+bugn
-                #'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=2312312321'
-                page = urlopen(url)
-                t = lxml.html.parse(page)
-                pagedesc = t.find(".//title").text
-                if pagedesc == "Missing Bug ID" or pagedesc=="Invalid Bug ID":
-                    result = pagedesc
-                else:
-                    result = pagedesc+" "+url
-                result = result.encode('utf8')
-                channel = msg.args[0]
-                irc.queueMsg(ircmsgs.privmsg(channel.encode('utf8'), result))
+        if not ct:
+            channel = msg.args[0]
+            res = self._checkDBhasChannel(channel)
+            if res is True:
+                res = re.search('((pr|issue|bug) #(\d+))|((pr|issue|bug)#(\d+))|((pr|issue|bug)(\d+))|((pr|issue|bug) (\d+))', msg.args[1], flags=re.IGNORECASE)
+                bugn = 0
+                result = None
 
+                if res:
+                    reslenght = res.groups().__len__()
+                    for x in range(0, reslenght):
+                        val = res.groups()[x]
+                        if val is not None:
+                            if unicode(val).isnumeric():
+                                bugn=val
+
+                if bugn != 0:
+                    self._returnbug(irc, msg, bugn, "")
+
+    def _returnbug(self, irc, msg, bugn, nickprefix):
+        result = nickprefix
+        url = 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=' + bugn
+        page = urlopen(url)
+        t = lxml.html.parse(page)
+        pagedesc = t.find(".//title").text
+        if pagedesc == "Missing Bug ID" or pagedesc == "Invalid Bug ID":
+            result = result + pagedesc
+        else:
+            result = result + pagedesc + " " + url
+        result = result.encode('utf8')
+        channel = msg.args[0]
+        irc.queueMsg(ircmsgs.privmsg(channel.encode('utf8'), result))
+
+    def _proccommand(self, irc, msg, args, positiveInt, somethingWithoutSpaces ):
+        msg_ = "Syntax error."
+        se = False
+        nickprefix = ""
+
+        if somethingWithoutSpaces is not None:
+            if somethingWithoutSpaces[:1] != "@":
+                se = True
+            elif somethingWithoutSpaces[1:] not in irc.state.channels[msg.args[0]].users:
+                msg_ = "Nick not in channel."
+                se = True
+            else:
+                nickprefix = nickprefix + somethingWithoutSpaces[1:] + ": "
+
+        if se:
+            irc.reply(msg_, prefixNick=True)
+        else:
+            bugn = str(positiveInt)
+            self._returnbug(irc, msg, bugn, nickprefix)
 
     def _checkDBexists(self):
         fexists = os.path.isfile(self.DBpath)
         if not fexists:
             SQL = "CREATE TABLE registry (channel text PRIMARY KEY); "
             self._SQLexec(SQL, -1)
-
 
     def _SQLexec(self, SQL, SQLargs):
         conn = (sqlite3.connect(self.DBpath))
@@ -111,12 +136,10 @@ class FreeBSDbugcatch(callbacks.Plugin):
             conn.close()
         return res
 
-
     def _getDBpath(self):
         p = Path(os.path.dirname(os.path.abspath(__file__)))
         db = str(p.parents[1].joinpath('data')) + "/freebsdbugcatch.db"
         return db
-
 
     def _checkDBhasChannel(self, channel):
         chan = (channel,)
@@ -126,7 +149,6 @@ class FreeBSDbugcatch(callbacks.Plugin):
             return False
         else:
             return True
-
 
     def add(self, irc, msg, args, channel):
         """Add channel."""
@@ -141,7 +163,6 @@ class FreeBSDbugcatch(callbacks.Plugin):
 
     add = wrap(add, ['inChannel'])
 
-
     def remove(self, irc, msg, args, channel):
         """Remove channel."""
         res = self._checkDBhasChannel(channel)
@@ -155,7 +176,6 @@ class FreeBSDbugcatch(callbacks.Plugin):
 
     remove = wrap(remove, ['somethingWithoutSpaces'])
 
-
     def list(self, irc, msg, args):
         """List registered channels"""
         SQL = 'SELECT * FROM registry'
@@ -166,6 +186,18 @@ class FreeBSDbugcatch(callbacks.Plugin):
             irc.reply(output_, prefixNick=True)
 
     list = wrap(list)
+
+    def issue(self, irc, msg, args, positiveInt, somethingWithoutSpaces):
+        """Returns bug"""
+        self._proccommand(irc, msg, args, positiveInt, somethingWithoutSpaces)
+
+    issue = wrap(issue, ['positiveInt',  optional('somethingWithoutSpaces')])
+
+    def bug(self, irc, msg, args, positiveInt, somethingWithoutSpaces):
+        """Returns bug"""
+        self._proccommand(irc, msg, args, positiveInt, somethingWithoutSpaces)
+
+    bug = wrap(bug, ['positiveInt',  optional('somethingWithoutSpaces')])
 
 
 Class = FreeBSDbugcatch
