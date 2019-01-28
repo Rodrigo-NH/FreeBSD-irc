@@ -92,10 +92,10 @@ class FreeBSDman(callbacks.Plugin):
         # Continue
         if uoption != "wrong":
             if section_ is not None:
-                urldir = "https://www.freebsd.org/cgi/man.cgi?query=" + command_ + "&sektion=" + \
+                urldir = "https://www.freebsd.org/cgi/man.cgi?query=" + str(command_).lower() + "&sektion=" + \
                          section_
             else:
-                urldir = "https://www.freebsd.org/cgi/man.cgi?query=" + command_
+                urldir = "https://www.freebsd.org/cgi/man.cgi?query=" + str(command_).lower()
 
             response = urllib2.urlopen(urldir + "&format=ascii")
             webData_ = response.read()
