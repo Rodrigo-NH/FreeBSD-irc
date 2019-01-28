@@ -37,7 +37,10 @@ class FreeBSDman(callbacks.Plugin):
 
 
     def man(self, irc, msg, args, command_):
-        """<command>"""
+        """<command> [section] @[nick]
+
+        Output <command> description from manpage of selected [section] and redirects output to @[nick] in the channel.
+        """
         uoption = None
         command_ = command_.split()
         # possible use case examples:
