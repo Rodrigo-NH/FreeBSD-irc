@@ -30,120 +30,96 @@ class FreeBSDman(callbacks.Plugin):
     """Reply with manpage description and link"""
     threaded = True
 
-
     def __init__(self, irc):
         self.__parent = super(FreeBSDman, self)
         self.__parent.__init__(irc)
 
+    def _getmandesc(self, webData_):
 
-    def man(self, irc, msg, args, command_):
-        """<command> [section] @[nick]
+        for x in range(0, 30):
+            ifield = re.sub(r'([\n]|[\r])', '', webData_[x], flags=re.M).replace('\t', ' ')
+            ifield = ifield.upper()
+            if ifield == "NAME":
+                idescription = webData_[x + 1]
+                idescription = re.sub(r'([\n]|[\r])', '', idescription, flags=re.M).replace('\t', ' ').lstrip(
+                    " ").rstrip(" ")
+                idescription = idescription.split()
+                odescription = ""
+                for x in range(2, idescription.__len__()):
+                    odescription = odescription + idescription[x] + " "
+                break
 
-        Output <command> description from manpage of selected [section] and redirects output to @[nick] in the channel.
+        return odescription
+
+    def man(self, irc, msg, args, arg1, arg2):
+        """<command>[(section)] @[nick]
+
+        Output <command> description from manpage of selected [(section)] and redirects output to @[nick] in the channel.
         """
         uoption = None
-        command_ = command_.split()
-        # possible use case examples:
-        # !man zfs 1 @DanDare
-        # !man zfs @DanDare
-        # !man zfs 1
-        # !man zfs
+        command_ = None
+        nick_ = None
+        section_ = None
 
-        # Syntax check 1st step
-        if command_.__len__() == 3:
-            uoption = "full"  # !man zfs 3 @DanDare
-        elif command_.__len__() == 2:
-            if command_[1].isdigit():
-                uoption = "sektion"  # !man zfs 3
+        # Syntax validation
+        if arg2 is not None:
+            if arg2[:1] != "@":
+                uoption = "wrong"
             else:
-                uoption = "redirect"  # !man zfs @DanDare
-        elif command_.__len__() == 1:
-            uoption = "simple"  # !man zfs
-        else:
-            uoption = "wrong"
+                if not arg2[1:] in irc.state.channels[msg.args[0]].users: # Check nick is in channel
+                    uoption = "wrong"
+                else:
+                    nick_ = arg2[1:]
 
-        # Syntax check 2nd step
-        if uoption == "full":
-            if command_[2][:1] != "@":
+        if uoption is not "wrong":
+            res = re.findall('\(([^()]*)\)', arg1)
+            rl = res.__len__()
+            if rl == 1:
+                if res is not None:
+                    if not res[0].isdigit():
+                        uoption = "wrong"
+                    else:
+                        section_ = res[0]
+                        command_ = arg1.split("(")[0]
+                else:
+                        command_ = arg1
+            elif rl == 0:
+                command_ = arg1
+            else:
                 uoption = "wrong"
-            if not command_[1].isdigit():
-                uoption = "wrong"
-
-        # Syntax check 3rd step
-        if uoption == "redirect":
-            if command_[1][:1] != "@":
-                uoption = "wrong"
-        if uoption == "sektion":
-            if not command_[1].isdigit():
-                uoption = "wrong"
-
-
-        # Syntax check 4th step
-        if uoption != "wrong" and command_[0][:1] == "@":
-            uoption = "wrong"
 
 
         # Continue
         if uoption != "wrong":
-            if uoption == "sektion" or uoption == "full":
-                urldir = "https://www.freebsd.org/cgi/man.cgi?query=" + command_[0] + "&sektion=" + \
-                         command_[1]
+            if section_ is not None:
+                urldir = "https://www.freebsd.org/cgi/man.cgi?query=" + command_ + "&sektion=" + \
+                         section_
             else:
-                urldir = "https://www.freebsd.org/cgi/man.cgi?query=" + command_[0]
+                urldir = "https://www.freebsd.org/cgi/man.cgi?query=" + command_
 
             response = urllib2.urlopen(urldir + "&format=ascii")
             webData_ = response.read()
             webData_ = webData_.splitlines()
-            #print webData_[0]
 
-            if str(webData_[0]) == "</pre>" or "EMPTY INPUT" in str(webData_[0]).upper():
-                irc.reply("Manpage not found.", prefixNick=True)
-            else:
-                sektion = re.sub(r'([\n]|[\r])', '', webData_[0], flags=re.M).replace('\t', ' ')
-                sektion = sektion.split()
-                sektion = sektion[0]
-                sektion = sektion.split("(")
-                sektion = "(" + sektion[1]
+            if "</pre>" not in str(webData_[0]) and "EMPTY INPUT" not in str(webData_[0]):
+                if section_ is None:
+                    sektion = re.sub(r'([\n]|[\r])', '', webData_[0], flags=re.M).replace('\t', ' ')
+                    sektion = sektion.split()
+                    sektion = sektion[0]
+                    sektion = sektion.split("(")
+                    sektion = "(" + sektion[1]
+                else:
+                    sektion = "(" + section_ + ")"
 
-                description = None
-                for x in range(0, 30):
-                    ifield = re.sub(r'([\n]|[\r])', '', webData_[x], flags=re.M).replace('\t', ' ')
-                    ifield = ifield.upper()
-                    if ifield == "NAME":
-                        idescription = webData_[x + 1]
-                        idescription = re.sub(r'([\n]|[\r])', '', idescription, flags=re.M).replace('\t', ' ').lstrip(
-                            " ").rstrip(" ")
-                        idescription = idescription.split()
-                        odescription = ""
-                        for x in range(2, idescription.__len__()):
-                            odescription = odescription + idescription[x] + " "
-                        break
+                if nick_ is not None:
+                    an = nick_ + ": "
+                else:
+                    an = ""
+                queryresult = an + str(command_).lower() + sektion + " - " + self._getmandesc(webData_) + urldir
+                irc.reply(queryresult, prefixNick=False)
 
-                queryresult = ""
-                nickprefix = False
-                if uoption == "simple" or uoption == "sektion":
-                    queryresult = command_[0].lower() + sektion + " - " + odescription + urldir
-                elif uoption == "full":
-                    if command_[2][1:] in irc.state.channels[msg.args[0]].users:
-                        queryresult = command_[2][1:] + ": " + command_[
-                            0].lower() + sektion + " - " + odescription + urldir
-                    else:
-                        queryresult = "'" + command_[2][1:] + "'" + " is not in the channel."
-                        nickprefix = True
-                elif uoption == "redirect":
-                    if command_[1][1:] in irc.state.channels[msg.args[0]].users:
-                        queryresult = command_[1][1:] + ": " + command_[
-                            0].lower() + sektion + " - " + odescription + urldir
-                    else:
-                        queryresult = "'" + command_[1][1:] + "'" + " is not in the channel."
-                        nickprefix = True
+    man = wrap(man, ['somethingWithoutSpaces', optional('somethingWithoutSpaces')])
 
-                irc.reply(queryresult, prefixNick=nickprefix)
-
-        else:
-            irc.reply("Syntax error.", prefixNick=True)
-
-    man = wrap(man, ['text'])
 
 
 Class = FreeBSDman
