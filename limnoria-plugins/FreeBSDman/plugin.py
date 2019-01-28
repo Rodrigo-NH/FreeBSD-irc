@@ -91,8 +91,9 @@ class FreeBSDman(callbacks.Plugin):
             response = urllib2.urlopen(urldir + "&format=ascii")
             webData_ = response.read()
             webData_ = webData_.splitlines()
+            #print webData_[0]
 
-            if webData_[0] == "</pre>":
+            if str(webData_[0]) == "</pre>" or "EMPTY INPUT" in str(webData_[0]).upper():
                 irc.reply("Manpage not found.", prefixNick=True)
             else:
                 sektion = re.sub(r'([\n]|[\r])', '', webData_[0], flags=re.M).replace('\t', ' ')
