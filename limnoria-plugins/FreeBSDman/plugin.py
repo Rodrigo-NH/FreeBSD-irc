@@ -64,33 +64,28 @@ class FreeBSDman(callbacks.Plugin):
         # Syntax validation
         if arg2 is not None:
             if arg2[:1] != "@":
-                uoption = "wrong"
+                uoption = "wrongS"
             else:
-                if not arg2[1:] in irc.state.channels[msg.args[0]].users: # Check nick is in channel
+                if not arg2[1:] in irc.state.channels[msg.args[0]].users:  # Check nick is in channel
                     uoption = "wrong"
                 else:
                     nick_ = arg2[1:]
-
         if uoption is not "wrong":
-            res = re.findall('\(([^()]*)\)', arg1)
+            res = re.findall('\(([^()*])\)', arg1)
             rl = res.__len__()
             if rl == 1:
-                if res is not None:
-                    if not res[0].isdigit():
-                        uoption = "wrong"
-                    else:
-                        section_ = res[0]
-                        command_ = arg1.split("(")[0]
+                if not res[0].isdigit():
+                    uoption = "wrongS"
                 else:
-                        command_ = arg1
+                    section_ = res[0]
+                    command_ = arg1.split("(")[0]
             elif rl == 0:
                 command_ = arg1
             else:
-                uoption = "wrong"
-
+                uoption = "wrongS"
 
         # Continue
-        if uoption != "wrong":
+        if uoption != "wrong" and uoption != "wrongS":
             if section_ is not None:
                 urldir = "https://www.freebsd.org/cgi/man.cgi?query=" + str(command_).lower() + "&sektion=" + \
                          section_
@@ -117,9 +112,10 @@ class FreeBSDman(callbacks.Plugin):
                     an = ""
                 queryresult = an + str(command_).lower() + sektion + " - " + self._getmandesc(webData_) + urldir
                 irc.reply(queryresult, prefixNick=False)
+        elif uoption == "wrongS":
+            irc.reply(self.getCommandHelp(['man'])) # Probably not the best way for achieving this
 
     man = wrap(man, ['somethingWithoutSpaces', optional('somethingWithoutSpaces')])
-
 
 
 Class = FreeBSDman
