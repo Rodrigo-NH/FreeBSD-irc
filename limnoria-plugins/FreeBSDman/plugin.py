@@ -45,8 +45,15 @@ class FreeBSDman(callbacks.Plugin):
                     " ").rstrip(" ")
                 idescription = idescription.split()
                 odescription = ""
+                ct = 0
                 for x in range(2, idescription.__len__()):
-                    odescription = odescription + idescription[x] + " "
+                    if ct == 0:
+                        if not "-" in idescription[x]:
+                            odescription = odescription + idescription[x] + " "
+                    else:
+                        odescription = odescription + idescription[x] + " "
+                    ct += 1
+
                 break
 
         return odescription
@@ -82,7 +89,10 @@ class FreeBSDman(callbacks.Plugin):
             else:
                 urldir = "https://www.freebsd.org/cgi/man.cgi?query=" + str(command_).lower()
 
-            response = urllib2.urlopen(urldir + "&format=ascii")
+            try:
+                response = urllib2.urlopen(urldir + "&format=ascii")
+            except:
+                pass
             webData_ = response.read()
             webData_ = webData_.splitlines()
 
