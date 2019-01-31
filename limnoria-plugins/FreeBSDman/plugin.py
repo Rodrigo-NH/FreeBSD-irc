@@ -51,41 +51,31 @@ class FreeBSDman(callbacks.Plugin):
 
         return odescription
 
-    def man(self, irc, msg, args, arg1, arg2):
+    def man(self, irc, msg, args, cmd):
         """<command>[(section)] @[nick]
 
         Output <command> description from manpage of selected [(section)] and redirects output to @[nick] in the channel.
         """
-        uoption = None
+        uoption_ = None
         command_ = None
         nick_ = None
         section_ = None
 
         # Syntax validation
-        if arg2 is not None:
-            if arg2[:1] != "@":
-                uoption = "wrongS"
-            else:
-                if not arg2[1:] in irc.state.channels[msg.args[0]].users:  # Check nick is in channel
-                    uoption = "wrong"
-                else:
-                    nick_ = arg2[1:]
-        if uoption is not "wrong":
-            res = re.findall('\(([^()*])\)', arg1)
-            rl = res.__len__()
-            if rl == 1:
-                if not res[0].isdigit():
-                    uoption = "wrongS"
-                else:
-                    section_ = res[0]
-                    command_ = arg1.split("(")[0]
-            elif rl == 0:
-                command_ = arg1
-            else:
-                uoption = "wrongS"
+        res = re.match("(\w+)(\((\d+)\))?( @(\w+))?\Z", cmd)
+        if res is not None:
+            res = res.groups()
+            command_ = res[0]
+            section_ = res[2]
+            nick_ = res[4]
+            if nick_ is not None:
+                if not nick_ in irc.state.channels[msg.args[0]].users:  # Check nick is in channel
+                    uoption_ = "nonick"
+        else:
+            uoption_ = "wrongS"
 
         # Continue
-        if uoption != "wrong" and uoption != "wrongS":
+        if uoption_ != "wrongS" and uoption_ != "nonick":
             if section_ is not None:
                 urldir = "https://www.freebsd.org/cgi/man.cgi?query=" + str(command_).lower() + "&sektion=" + \
                          section_
@@ -112,10 +102,10 @@ class FreeBSDman(callbacks.Plugin):
                     an = ""
                 queryresult = an + str(command_).lower() + sektion + " - " + self._getmandesc(webData_) + urldir
                 irc.reply(queryresult, prefixNick=False)
-        elif uoption == "wrongS":
+        elif uoption_ == "wrongS":
             irc.reply(self.getCommandHelp(['man'])) # Probably not the best way for achieving this
 
-    man = wrap(man, ['somethingWithoutSpaces', optional('somethingWithoutSpaces')])
+    man = wrap(man, ['text'])
 
 
 Class = FreeBSDman
