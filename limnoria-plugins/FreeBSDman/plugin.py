@@ -69,7 +69,7 @@ class FreeBSDman(callbacks.Plugin):
         section_ = None
 
         # Syntax validation
-        res = re.match("(\w+)(\((\d+)\))?( @(\w+))?\Z", cmd)
+        res = re.match("([!-'*-~]+)(\((\d+)\))?( @(\w+))?\Z", cmd, flags=re.IGNORECASE)
         if res is not None:
             res = res.groups()
             command_ = res[0]
