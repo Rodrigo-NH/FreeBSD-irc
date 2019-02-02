@@ -43,9 +43,8 @@ class FreeBSDbugcatch(callbacks.Plugin):
         self.DBpath = self._getDBpath()
         self._checkDBexists()
 
-
     def listCommands(self):
-        commands = ['add', 'list', 'remove', 'issue', 'bug']
+        commands = ['add', 'list', 'remove', 'issue']
         return commands
 
     def inFilter(self, irc, msg):
@@ -77,7 +76,6 @@ class FreeBSDbugcatch(callbacks.Plugin):
                         if val is not None:
                             if unicode(val).isnumeric():
                                 bugn=val
-
                 if bugn != 0:
                     self._returnbug(irc, msg, bugn, "")
 
@@ -88,32 +86,12 @@ class FreeBSDbugcatch(callbacks.Plugin):
         t = lxml.html.parse(page)
         pagedesc = t.find(".//title").text
         if pagedesc == "Missing Bug ID" or pagedesc == "Invalid Bug ID":
-            result = result + pagedesc
+            result = ""
         else:
             result = result + pagedesc + " " + url
         result = result.encode('utf8')
         channel = msg.args[0]
         irc.queueMsg(ircmsgs.privmsg(channel.encode('utf8'), result))
-
-    def _proccommand(self, irc, msg, args, positiveInt, somethingWithoutSpaces ):
-        msg_ = "Syntax error."
-        se = False
-        nickprefix = ""
-
-        if somethingWithoutSpaces is not None:
-            if somethingWithoutSpaces[:1] != "@":
-                se = True
-            elif somethingWithoutSpaces[1:] not in irc.state.channels[msg.args[0]].users:
-                msg_ = "Nick not in channel."
-                se = True
-            else:
-                nickprefix = nickprefix + somethingWithoutSpaces[1:] + ": "
-
-        if se:
-            irc.reply(msg_, prefixNick=True)
-        else:
-            bugn = str(positiveInt)
-            self._returnbug(irc, msg, bugn, nickprefix)
 
     def _checkDBexists(self):
         fexists = os.path.isfile(self.DBpath)
@@ -180,6 +158,8 @@ class FreeBSDbugcatch(callbacks.Plugin):
         """List registered channels"""
         SQL = 'SELECT * FROM registry'
         cursor = self._SQLexec(SQL, -1)
+        if len(cursor) == 0:
+            irc.reply("No channel in DB", prefixNick=True)
         for x in cursor:
             v0 = x[0]  # channel
             output_ = "Channel: " + v0
@@ -187,17 +167,38 @@ class FreeBSDbugcatch(callbacks.Plugin):
 
     list = wrap(list)
 
-    def issue(self, irc, msg, args, positiveInt, somethingWithoutSpaces):
-        """Returns bug"""
-        self._proccommand(irc, msg, args, positiveInt, somethingWithoutSpaces)
+    def issue(self, irc, msg, args, text):
+        """<issueID> @[nick]
 
-    issue = wrap(issue, ['positiveInt',  optional('somethingWithoutSpaces')])
+        Output Bugzilla <issueID> description and redirects output to @[nick] in the channel.
+        """
+        uoption_ = None
+        bugid_ = None
+        nick_ = None
 
-    def bug(self, irc, msg, args, positiveInt, somethingWithoutSpaces):
-        """Returns bug"""
-        self._proccommand(irc, msg, args, positiveInt, somethingWithoutSpaces)
+        # Syntax check
+        res = re.match("(\d+)( @(\w+))?\Z", text)
+        if res is not None:
+            res = res.groups()
+            bugid_ = res[0]
+            nick_ = res[2]
+            if nick_ is not None:
+                if not nick_ in irc.state.channels[msg.args[0]].users:  # Check nick is in channel
+                    uoption_ = "nonick"
+                else:
+                    nick_ = nick_ + ": "
+        else:
+            uoption_ = "wrongS"
 
-    bug = wrap(bug, ['positiveInt',  optional('somethingWithoutSpaces')])
+        # continue
+        if uoption_ != "wrongS" and uoption_ != "nonick":
+            if nick_ == None:
+                nick_ = ""
+            self._returnbug(irc, msg, bugid_, nick_)
+        elif uoption_ == "wrongS":
+            irc.reply(self.getCommandHelp(['issue']))  # Probably not the best way for achieving this
+
+    issue = wrap(issue, ['text'])
 
 
 Class = FreeBSDbugcatch
