@@ -55,9 +55,13 @@ class FreeBSDbugcatch(callbacks.Plugin):
     def _catchbug(self, irc, msg):
         prefixChars = list(conf.supybot.reply.whenAddressedBy.chars())
         ct = False
-        for x in prefixChars: # Check user issued commands directly and avoid automatic parsing
+        res = None
+        for x in prefixChars:  # Check user issued commands directly and avoid automatic parsing
             regex_ = r"^(" + re.escape(x) + r")"
-            res = re.search(regex_, msg.args[1])
+            try:
+                res = re.search(regex_, msg.args[1])
+            except IndexError:
+                pass
             if res:
                 ct = True
 
@@ -82,16 +86,19 @@ class FreeBSDbugcatch(callbacks.Plugin):
     def _returnbug(self, irc, msg, bugn, nickprefix):
         result = nickprefix
         url = 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=' + bugn
-        page = urlopen(url)
-        t = lxml.html.parse(page)
-        pagedesc = t.find(".//title").text
-        if pagedesc == "Missing Bug ID" or pagedesc == "Invalid Bug ID":
-            result = ""
-        else:
-            result = result + pagedesc + " " + url
-        result = result.encode('utf8')
-        channel = msg.args[0]
-        irc.queueMsg(ircmsgs.privmsg(channel.encode('utf8'), result))
+        try:
+            page = urlopen(url)
+            t = lxml.html.parse(page)
+            pagedesc = t.find(".//title").text
+            if pagedesc == "Missing Bug ID" or pagedesc == "Invalid Bug ID":
+                result = ""
+            else:
+                result = result + pagedesc + " " + url
+                result = result.encode('utf8')
+                channel = msg.args[0]
+                irc.queueMsg(ircmsgs.privmsg(channel.encode('utf8'), result))
+        except:
+            pass # Network issues
 
     def _checkDBexists(self):
         fexists = os.path.isfile(self.DBpath)
