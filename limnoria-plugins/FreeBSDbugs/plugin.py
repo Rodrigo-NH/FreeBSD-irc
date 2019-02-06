@@ -36,8 +36,7 @@ class FreeBSDbugs(callbacks.Plugin):
     loopthread = True
     channelscontrol = list()
     lastknowbug = 0
-    locklist = False
-
+    lock = threading.RLock()
 
     def __init__(self, irc):
         self.__parent = super(FreeBSDbugs, self)
@@ -46,11 +45,9 @@ class FreeBSDbugs(callbacks.Plugin):
         self._checkDBexists()
         self._bugRun(irc)
 
-
     def listCommands(self):
         commands = ['add', 'remove', 'setactive', 'setinactive', 'setinterval', 'list']
         return commands
-
 
     def _bugRun(self, irc):
         SQL = 'SELECT lastknowbug FROM lastknowbug'
@@ -74,31 +71,17 @@ class FreeBSDbugs(callbacks.Plugin):
         t.setDaemon(True)
         t.start()
 
-
     def die(self):
-        self.locklist = False
         self.loopthread = False
         SQL = 'UPDATE lastknowbug SET lastknowbug = ?'
         SQLargs = (self.lastknowbug,)
         self._SQLexec(SQL, SQLargs)
 
-
-    def _locklist(self): # It seems that colision/block is possible so this is needed
-        if self.locklist == False:
-            self.locklist = True
-            return True
-        else:
-            self.locklist = False
-            return False
-
-
     def _checkchannels(self, irc):
         while self.loopthread:
             time_ = int(time.time())
-            while self.locklist:
-                time.sleep(0.01)
-                pass
-            self._locklist()
+
+            self.lock.acquire()
             for x in range(0, len(self.channelscontrol)):
                 v0 = self.channelscontrol[x][0]
                 v1 = self.channelscontrol[x][1]
@@ -111,16 +94,11 @@ class FreeBSDbugs(callbacks.Plugin):
                     t = threading.Thread(target=self._updatechannel, args=(irc, x, list_,))
                     t.setDaemon(True)
                     t.start()
-            self._locklist()
+            self.lock.release()
             time.sleep(1)
 
-
     def _updatechannel(self, irc, listindex, chancontrol ):
-        #print chancontrol
-        while self.locklist:
-            time.sleep(0.01)
-            pass
-        self._locklist()
+        self.lock.acquire()
         v0 = chancontrol[0]  # channel
         v1 = chancontrol[1]  # isactive
         v2 = chancontrol[2]  # updateinterval
@@ -146,8 +124,7 @@ class FreeBSDbugs(callbacks.Plugin):
                 self.channelscontrol[listindex] = list_
             except:
                 lastseen -= 1
-        self._locklist()
-
+        self.lock.release()
 
     def _getLastBug(self, irc, channel):
         maxbug = 500000 # Arbitrary up limit
@@ -156,8 +133,6 @@ class FreeBSDbugs(callbacks.Plugin):
         ct2 = 0
         notAlready = True
         while notAlready:
-            #print "maxbug: " + str(maxbug)
-            #print "minbug: " + str(minbug)
             url = 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=' + str(maxbug)
             try:
                 pagedesc = self._getPageTitle(url)
@@ -179,11 +154,7 @@ class FreeBSDbugs(callbacks.Plugin):
             SQLargs = (maxbug,)
             self._SQLexec(SQL, SQLargs)
 
-
-        while self.locklist:
-            time.sleep(0.01)
-            pass
-        self._locklist()
+        self.lock.acquire()
         for x in range(0, len(self.channelscontrol)):
             v0 = self.channelscontrol[x][0]
             v1 = self.channelscontrol[x][1]
@@ -192,8 +163,7 @@ class FreeBSDbugs(callbacks.Plugin):
             if str(v0) == channel:
                 list_ = [v0, v1, v2, v3, maxbug]
                 self.channelscontrol[x] = list_
-        self._locklist()
-
+        self.lock.release()
 
     def _checkDBexists(self):
         fexists = os.path.isfile(self.DBpath)
@@ -204,7 +174,6 @@ class FreeBSDbugs(callbacks.Plugin):
             self._SQLexec(SQL, -1)
             SQL = 'INSERT INTO lastknowbug (lastknowbug) VALUES (0)'
             self._SQLexec(SQL, -1)
-
 
     def _SQLexec(self, SQL, SQLargs):
         conn = (sqlite3.connect(self.DBpath))
@@ -221,12 +190,10 @@ class FreeBSDbugs(callbacks.Plugin):
             conn.close()
         return res
 
-
     def _getDBpath(self):
         p = Path(os.path.dirname(os.path.abspath(__file__)))
         db = str(p.parents[1].joinpath('data')) + "/freebsdbugs.db"
         return db
-
 
     def _checkDBhasChannel(self, channel):
         chan = (channel,)
@@ -237,13 +204,11 @@ class FreeBSDbugs(callbacks.Plugin):
         else:
             return True
 
-
     def _getPageTitle(self, url):
         page = urlopen(url)
         t = lxml.html.parse(page)
         pagedesc = t.find(".//title").text
         return pagedesc
-
 
     def add(self, irc, msg, args, channel, updateInterval):
         """Add channel to receive NEW bugs notices."""
@@ -257,10 +222,7 @@ class FreeBSDbugs(callbacks.Plugin):
                 SQL = 'INSERT INTO registry (channel, isActive, updateInterval) VALUES (?, ?, ?)'
                 SQLargs = (channel, 1, updateInterval)
                 self._SQLexec(SQL, SQLargs)
-                while self.locklist:
-                    time.sleep(0.01)
-                    pass
-                self._locklist()
+                self.lock.acquire()
                 v0 = channel  # channel
                 v1 = 1  # isactive
                 v2 = updateInterval  # updateinterval
@@ -268,14 +230,12 @@ class FreeBSDbugs(callbacks.Plugin):
                 v4 = 0  # Per channel last know bug
                 list_ = [v0, v1, v2, v3, v4]
                 self.channelscontrol.append(list_)
-                self._locklist()
+                self.lock.release()
                 irc.reply("Channel added and activated.", prefixNick=True)
                 g = threading.Thread(target=self._getLastBug, args=(irc, channel,))
                 g.setDaemon(True)
                 g.start()
-
     add = wrap(add, ['inChannel', 'int'])
-
 
     def remove(self, irc, msg, args, channel):
         """Remove channel that receives NEW bugs notices."""
@@ -284,22 +244,17 @@ class FreeBSDbugs(callbacks.Plugin):
             SQL = 'DELETE FROM registry WHERE channel = ?'
             SQLargs = (channel,)
             self._SQLexec(SQL, SQLargs)
-            while self.locklist:
-                time.sleep(0.01)
-                pass
-            self._locklist()
+            self.lock.acquire()
             for x in range(0, len(self.channelscontrol)):
                 v0 = str(self.channelscontrol[x][0])
                 if v0 == channel:
                     self.channelscontrol.pop(x)
                     break
-            self._locklist()
+            self.lock.release()
             irc.reply("Channel removed from DB.", prefixNick=True)
         else:
             irc.reply("Channel does not exist in DB.", prefixNick=True)
-
     remove = wrap(remove, ['somethingWithoutSpaces'])
-
 
     def setinactive(self, irc, msg, args, channel):
         """Set inactive register to channel stored in DB."""
@@ -308,21 +263,16 @@ class FreeBSDbugs(callbacks.Plugin):
             SQL = 'UPDATE registry SET isActive = ? WHERE channel = ?'
             SQLargs = (0, channel)
             self._SQLexec(SQL, SQLargs)
-            while self.locklist:
-                time.sleep(0.01)
-                pass
-            self._locklist()
+            self.lock.acquire()
             for x in range(0, len(self.channelscontrol)):
                 v0 = str(self.channelscontrol[x][0])
                 if v0 == channel:
                     self.channelscontrol[x][1] = 0
-            self._locklist()
+            self.lock.release()
             irc.reply("Channel set inactive.", prefixNick=True)
         else:
             irc.reply("Channel does not exist in DB.", prefixNick=True)
-
     setinactive = wrap(setinactive, ['somethingWithoutSpaces'])
-
 
     def setactive(self, irc, msg, args, channel):
         """Set active register to channel stored in DB."""
@@ -331,25 +281,20 @@ class FreeBSDbugs(callbacks.Plugin):
             SQL = 'UPDATE registry SET isActive = ? WHERE channel = ?'
             SQLargs = (1, channel)
             self._SQLexec(SQL, SQLargs)
-            while self.locklist:
-                time.sleep(0.01)
-                pass
-            self._locklist()
+            self.lock.acquire()
             for x in range(0, len(self.channelscontrol)):
                 v0 = str(self.channelscontrol[x][0])
                 if v0 == channel:
                     self.channelscontrol[x][1] = 1
                     self.channelscontrol[x][4] = 0
-            self._locklist()
+            self.lock.release()
             irc.reply("Channel set active.", prefixNick=True)
             g = threading.Thread(target=self._getLastBug, args=(irc, channel,))
             g.setDaemon(True)
             g.start()
         else:
             irc.reply("Channel does not exist in DB.", prefixNick=True)
-
     setactive = wrap(setactive, ['somethingWithoutSpaces'])
-
 
     def setinterval(self, irc, msg, args, channel, updateInterval):
         """Change update interval for channel."""
@@ -361,21 +306,16 @@ class FreeBSDbugs(callbacks.Plugin):
                 SQL = 'UPDATE registry SET updateInterval = ? WHERE channel = ?'
                 SQLargs = (updateInterval, channel)
                 self._SQLexec(SQL, SQLargs)
-                while self.locklist:
-                    time.sleep(0.01)
-                    pass
-                self._locklist()
+                self.lock.acquire()
                 for x in range(0, len(self.channelscontrol)):
                     v0 = str(self.channelscontrol[x][0])
                     if str(v0) == channel:
                         self.channelscontrol[x][2] = updateInterval
-                self._locklist()
+                self.lock.release()
                 irc.reply("Update interval set to: " + str(updateInterval), prefixNick=True)
         else:
             irc.reply("Channel does not exist in DB.", prefixNick=True)
-
     setinterval = wrap(setinterval, ['somethingWithoutSpaces', 'int'])
-
 
     def list(self, irc, msg, args):
         """List registered channels and last know bugzilla bug in DB"""
@@ -391,7 +331,6 @@ class FreeBSDbugs(callbacks.Plugin):
         cursor = self._SQLexec(SQL, -1)
         lastknowbug_ = "Last know bug in DB is: " + str(cursor[0][0])
         irc.reply(lastknowbug_, prefixNick=True)
-
     list = wrap(list)
 
 
