@@ -15,7 +15,7 @@ from supybot.commands import *
 import os, sqlite3, lxml.html, threading, time
 from pathlib import Path
 from sqlite3 import Error
-from urllib2 import urlopen
+import urllib3
 
 
 try:

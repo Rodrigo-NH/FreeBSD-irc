@@ -9,7 +9,7 @@
 #
 ###
 
-import urllib2
+import urllib3
 import re
 from supybot import utils, plugins, ircutils, callbacks, ircmsgs
 from supybot.commands import *
