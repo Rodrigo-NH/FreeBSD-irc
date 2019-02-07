@@ -9,7 +9,7 @@
 #
 ###
 
-import urllib3
+import requests
 import re
 from supybot import utils, plugins, ircutils, callbacks, ircmsgs
 from supybot.commands import *
@@ -90,28 +90,28 @@ class FreeBSDman(callbacks.Plugin):
                 urldir = "https://www.freebsd.org/cgi/man.cgi?query=" + str(command_).lower()
 
             try:
-                response = urllib2.urlopen(urldir + "&format=ascii")
+                req = requests.get(urldir + "&format=ascii", )
+                webData_ = req.text
+                webData_ = webData_.splitlines()
+
+                if "</pre>" not in str(webData_[0]) and "EMPTY INPUT" not in str(webData_[0]):
+                    if section_ is None:
+                        sektion = re.sub(r'([\n]|[\r])', '', webData_[0], flags=re.M).replace('\t', ' ')
+                        sektion = sektion.split()
+                        sektion = sektion[0]
+                        sektion = sektion.split("(")
+                        sektion = "(" + sektion[1]
+                    else:
+                        sektion = "(" + section_ + ")"
+
+                    if nick_ is not None:
+                        an = nick_ + ": "
+                    else:
+                        an = ""
+                    queryresult = an + str(command_).lower() + sektion + " - " + self._getmandesc(webData_) + urldir
+                    irc.reply(queryresult, prefixNick=False)
             except:
                 pass
-            webData_ = response.read()
-            webData_ = webData_.splitlines()
-
-            if "</pre>" not in str(webData_[0]) and "EMPTY INPUT" not in str(webData_[0]):
-                if section_ is None:
-                    sektion = re.sub(r'([\n]|[\r])', '', webData_[0], flags=re.M).replace('\t', ' ')
-                    sektion = sektion.split()
-                    sektion = sektion[0]
-                    sektion = sektion.split("(")
-                    sektion = "(" + sektion[1]
-                else:
-                    sektion = "(" + section_ + ")"
-
-                if nick_ is not None:
-                    an = nick_ + ": "
-                else:
-                    an = ""
-                queryresult = an + str(command_).lower() + sektion + " - " + self._getmandesc(webData_) + urldir
-                irc.reply(queryresult, prefixNick=False)
         elif uoption_ == "wrongS":
             irc.reply(self.getCommandHelp(['man'])) # Probably not the best way for achieving this
 
