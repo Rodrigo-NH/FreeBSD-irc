@@ -12,10 +12,11 @@
 
 from supybot import utils, plugins, ircutils, callbacks, ircmsgs
 from supybot.commands import *
-import os, sqlite3, lxml.html, threading, time
+import os, sqlite3, threading, time
+from lxml.html import fromstring
 from pathlib import Path
 from sqlite3 import Error
-import urllib3
+import requests
 
 
 try:
@@ -113,9 +114,9 @@ class FreeBSDbugs(callbacks.Plugin):
                 pagedesc = self._getPageTitle(url)
                 if pagedesc != "Missing Bug ID":
                     notice = "#" + pagedesc + " " + "https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=" + str(lastseen) + " (NEW)"
-                    notice = notice.encode('utf8')
+                    notice = notice
                     if self.loopthread:
-                        irc.queueMsg(ircmsgs.privmsg(v0.encode('utf8'), notice))  # notice.encode() must be outside of ircmsgs.privmsg here
+                        irc.queueMsg(ircmsgs.privmsg(v0, notice))
                 else:
                     lastseen -= 1
                     reachend = 1
@@ -130,15 +131,13 @@ class FreeBSDbugs(callbacks.Plugin):
         maxbug = 500000 # Arbitrary up limit
         minbug = self.lastknowbug
         ct1 = 0
-        ct2 = 0
         notAlready = True
         while notAlready:
             url = 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=' + str(maxbug)
             try:
                 pagedesc = self._getPageTitle(url)
-                ct2 += 1
                 if pagedesc == "Missing Bug ID":
-                    ct1 = (maxbug - minbug) / 2
+                    ct1 = int((maxbug - minbug) / 2)
                     maxbug = maxbug - ct1
                 else:
                     minbug = maxbug
@@ -149,6 +148,7 @@ class FreeBSDbugs(callbacks.Plugin):
                     notAlready = False
             except:
                 pass
+
         if not notAlready:
             SQL = 'UPDATE lastknowbug SET lastknowbug = ?'
             SQLargs = (maxbug,)
@@ -205,9 +205,9 @@ class FreeBSDbugs(callbacks.Plugin):
             return True
 
     def _getPageTitle(self, url):
-        page = urlopen(url)
-        t = lxml.html.parse(page)
-        pagedesc = t.find(".//title").text
+        page = requests.get(url, )
+        tree = fromstring(page.content)
+        pagedesc = tree.findtext('.//title')
         return pagedesc
 
     def add(self, irc, msg, args, channel, updateInterval):
