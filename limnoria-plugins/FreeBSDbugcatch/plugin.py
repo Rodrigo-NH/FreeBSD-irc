@@ -13,8 +13,8 @@ from supybot import utils, plugins, ircutils, callbacks, conf
 from supybot.commands import *
 import supybot.ircmsgs as ircmsgs
 import re
-from urllib2 import urlopen
-import lxml.html
+import requests
+from lxml.html import fromstring
 import os, sqlite3
 from pathlib import Path
 
@@ -77,26 +77,30 @@ class FreeBSDbugcatch(callbacks.Plugin):
                     reslenght = res.groups().__len__()
                     for x in range(0, reslenght):
                         val = res.groups()[x]
-                        if val is not None:
-                            if unicode(val).isnumeric():
-                                bugn=val
-                if bugn != 0:
-                    self._returnbug(irc, msg, bugn, "")
+                        try:
+                            bugn = str(int(val))
+                            if bugn != 0:
+                                self._returnbug(irc, msg, bugn, "")
+                        except:
+                            pass
+
+
 
     def _returnbug(self, irc, msg, bugn, nickprefix):
         result = nickprefix
         url = 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=' + bugn
         try:
-            page = urlopen(url)
-            t = lxml.html.parse(page)
-            pagedesc = t.find(".//title").text
+            page = requests.get(url, )
+            tree = fromstring(page.content)
+            pagedesc = tree.findtext('.//title')
+            print (pagedesc.encode('utf-8'))
             if pagedesc == "Missing Bug ID" or pagedesc == "Invalid Bug ID":
                 result = ""
             else:
                 result = result + pagedesc + " " + url
-                result = result.encode('utf8')
+                result = result
                 channel = msg.args[0]
-                irc.queueMsg(ircmsgs.privmsg(channel.encode('utf8'), result))
+                irc.queueMsg(ircmsgs.privmsg(channel, result))
         except:
             pass # Network issues
 
