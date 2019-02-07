@@ -15,9 +15,6 @@ import supybot.ircmsgs as ircmsgs
 import re
 import requests
 from lxml.html import fromstring
-import os, sqlite3
-from pathlib import Path
-
 
 try:
     from supybot.i18n import PluginInternationalization
@@ -27,24 +24,17 @@ except ImportError:
     # without the i18n module
     _ = lambda x: x
 
-
-if not (sqlite3 or sqlalchemy):
-    raise callbacks.Error('You have to install python-sqlite3 or '
-            'python-sqlalchemy in order to load this plugin.')
-
-
 class FreeBSDbugcatch(callbacks.Plugin):
     """Catch or direct command PR ID on IRC talk and returns Summary + Link"""
+    chanlist = list()
 
     def __init__(self, irc):
         self.__parent = super(FreeBSDbugcatch, self)
         self.__parent.__init__(irc)
         self.filtering = True
-        self.DBpath = self._getDBpath()
-        self._checkDBexists()
 
     def listCommands(self):
-        commands = ['add', 'list', 'remove', 'issue']
+        commands = ['issue']
         return commands
 
     def inFilter(self, irc, msg):
@@ -67,8 +57,8 @@ class FreeBSDbugcatch(callbacks.Plugin):
 
         if not ct:
             channel = msg.args[0]
-            res = self._checkDBhasChannel(channel)
-            if res is True:
+            channlist = list(conf.supybot.plugins.freebsdbugcatch.channels())
+            if channel in channlist:
                 res = re.search('((pr|issue|bug) #(\d+))|((pr|issue|bug)#(\d+))|((pr|issue|bug)(\d+))|((pr|issue|bug) (\d+))', msg.args[1], flags=re.IGNORECASE)
                 bugn = 0
                 result = None
@@ -83,8 +73,6 @@ class FreeBSDbugcatch(callbacks.Plugin):
                                 self._returnbug(irc, msg, bugn, "")
                         except:
                             pass
-
-
 
     def _returnbug(self, irc, msg, bugn, nickprefix):
         result = nickprefix
@@ -103,80 +91,6 @@ class FreeBSDbugcatch(callbacks.Plugin):
                 irc.queueMsg(ircmsgs.privmsg(channel, result))
         except:
             pass # Network issues
-
-    def _checkDBexists(self):
-        fexists = os.path.isfile(self.DBpath)
-        if not fexists:
-            SQL = "CREATE TABLE registry (channel text PRIMARY KEY); "
-            self._SQLexec(SQL, -1)
-
-    def _SQLexec(self, SQL, SQLargs):
-        conn = (sqlite3.connect(self.DBpath))
-        cursor = conn.cursor()
-        if SQLargs != -1:
-            cursor.execute(SQL, SQLargs)
-            conn.commit()
-            res = cursor.fetchall()
-            conn.close()
-        else:
-            cursor.execute(SQL)
-            conn.commit()
-            res = cursor.fetchall()
-            conn.close()
-        return res
-
-    def _getDBpath(self):
-        p = Path(os.path.dirname(os.path.abspath(__file__)))
-        db = str(p.parents[1].joinpath('data')) + "/freebsdbugcatch.db"
-        return db
-
-    def _checkDBhasChannel(self, channel):
-        chan = (channel,)
-        SQL = 'SELECT * FROM registry WHERE channel = ?'
-        cursor = self._SQLexec(SQL, chan)
-        if len(cursor) == 0:
-            return False
-        else:
-            return True
-
-    def add(self, irc, msg, args, channel):
-        """Add channel."""
-        res = self._checkDBhasChannel(channel)
-        if res is True:
-            irc.reply("Channel already activated.", prefixNick=True)
-        else:
-            SQL = 'INSERT INTO registry (channel) VALUES (?)'
-            SQLargs = (channel,)
-            self._SQLexec(SQL, SQLargs)
-            irc.reply("Channel activated.", prefixNick=True)
-
-    add = wrap(add, ['inChannel'])
-
-    def remove(self, irc, msg, args, channel):
-        """Remove channel."""
-        res = self._checkDBhasChannel(channel)
-        if res is True:
-            SQL = 'DELETE FROM registry WHERE channel = ?'
-            SQLargs = (channel,)
-            self._SQLexec(SQL, SQLargs)
-            irc.reply("Channel deactivated.", prefixNick=True)
-        else:
-            irc.reply("Channel does not exist in DB.", prefixNick=True)
-
-    remove = wrap(remove, ['somethingWithoutSpaces'])
-
-    def list(self, irc, msg, args):
-        """List registered channels"""
-        SQL = 'SELECT * FROM registry'
-        cursor = self._SQLexec(SQL, -1)
-        if len(cursor) == 0:
-            irc.reply("No channel in DB", prefixNick=True)
-        for x in cursor:
-            v0 = x[0]  # channel
-            output_ = "Channel: " + v0
-            irc.reply(output_, prefixNick=True)
-
-    list = wrap(list)
 
     def issue(self, irc, msg, args, text):
         """<issueID> @[nick]
