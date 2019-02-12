@@ -25,8 +25,7 @@ except ImportError:
     _ = lambda x: x
 
 class FreeBSDbugcatch(callbacks.Plugin):
-    """Catch or direct command PR ID on IRC talk and returns Summary + Link"""
-    chanlist = list()
+    """Catch or direct command PR ID on IRC talk and return Summary + Link"""
 
     def __init__(self, irc):
         self.__parent = super(FreeBSDbugcatch, self)
@@ -81,12 +80,10 @@ class FreeBSDbugcatch(callbacks.Plugin):
             page = requests.get(url, )
             tree = fromstring(page.content)
             pagedesc = tree.findtext('.//title')
-            print (pagedesc.encode('utf-8'))
             if pagedesc == "Missing Bug ID" or pagedesc == "Invalid Bug ID":
                 result = ""
             else:
                 result = result + pagedesc + " " + url
-                result = result
                 channel = msg.args[0]
                 irc.queueMsg(ircmsgs.privmsg(channel, result))
         except:
@@ -122,7 +119,6 @@ class FreeBSDbugcatch(callbacks.Plugin):
             self._returnbug(irc, msg, bugid_, nick_)
         elif uoption_ == "wrongS":
             irc.reply(self.getCommandHelp(['issue']))  # Probably not the best way for achieving this
-
     issue = wrap(issue, ['text'])
 
 
