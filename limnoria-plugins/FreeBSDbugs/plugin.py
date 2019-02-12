@@ -15,7 +15,6 @@ from supybot.commands import *
 import os, sqlite3, threading, time
 from lxml.html import fromstring
 from pathlib import Path
-from sqlite3 import Error
 import requests
 
 
@@ -99,43 +98,46 @@ class FreeBSDbugs(callbacks.Plugin):
             time.sleep(1)
 
     def _updatechannel(self, irc, listindex, chancontrol ):
-        self.lock.acquire()
+        lastseen = chancontrol[4]  # Per channel last know bug
         v0 = chancontrol[0]  # channel
-        v1 = chancontrol[1]  # isactive
-        v2 = chancontrol[2]  # updateinterval
-        v3 = chancontrol[3]  # lastcheckdtime
-        v4 = chancontrol[4]  # Per channel last know bug
-        lastseen = v4
         reachend = 0
-        while reachend == 0:
+        while reachend == 0 and self.loopthread == True:
             lastseen += 1
             url = 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=' + str(lastseen)
             try:
-                pagedesc = self._getPageTitle(url)
-                if pagedesc != "Missing Bug ID":
+                res = self._getPageTitle(url)
+                pagedesc = res[0]
+                sc = res[1]
+                if pagedesc != "Missing Bug ID" and str(sc) == '200':
                     notice = "#" + pagedesc + " " + "https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=" + str(lastseen) + " (NEW)"
-                    notice = notice
                     if self.loopthread:
                         irc.queueMsg(ircmsgs.privmsg(v0, notice))
                 else:
                     lastseen -= 1
                     reachend = 1
-                list_ = [v0, v1, v2, v3, lastseen]
                 self.lastknowbug = lastseen
-                self.channelscontrol[listindex] = list_
             except:
                 lastseen -= 1
+                time.sleep(3)
+
+        self.lock.acquire()
+        v1 = chancontrol[1]  # isactive
+        v2 = chancontrol[2]  # updateinterval
+        v3 = chancontrol[3]  # lastcheckdtime
+        list_ = [v0, v1, v2, v3, lastseen]
+        self.channelscontrol[listindex] = list_
         self.lock.release()
 
     def _getLastBug(self, irc, channel):
-        maxbug = 500000 # Arbitrary up limit
+        maxbug = 500000 # Arbitrary upper limit
         minbug = self.lastknowbug
         ct1 = 0
         notAlready = True
-        while notAlready:
+        while notAlready and self.loopthread == True:
             url = 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=' + str(maxbug)
             try:
-                pagedesc = self._getPageTitle(url)
+                res = self._getPageTitle(url)
+                pagedesc = res[0]
                 if pagedesc == "Missing Bug ID":
                     ct1 = int((maxbug - minbug) / 2)
                     maxbug = maxbug - ct1
@@ -147,7 +149,7 @@ class FreeBSDbugs(callbacks.Plugin):
                     self.lastknowbug = maxbug
                     notAlready = False
             except:
-                pass
+                time.sleep(3)
 
         if not notAlready:
             SQL = 'UPDATE lastknowbug SET lastknowbug = ?'
@@ -206,9 +208,11 @@ class FreeBSDbugs(callbacks.Plugin):
 
     def _getPageTitle(self, url):
         page = requests.get(url, )
+        sc = page.status_code
         tree = fromstring(page.content)
         pagedesc = tree.findtext('.//title')
-        return pagedesc
+        res = (pagedesc, sc)
+        return res
 
     def add(self, irc, msg, args, channel, updateInterval):
         """Add channel to receive NEW bugs notices."""
@@ -321,16 +325,19 @@ class FreeBSDbugs(callbacks.Plugin):
         """List registered channels and last know bugzilla bug in DB"""
         SQL = 'SELECT * FROM registry'
         cursor = self._SQLexec(SQL, -1)
-        for x in cursor:
-            v0 = x[0]  # channel
-            v1 = x[1]  # isactive
-            v2 = x[2]  # updateinterval
-            output_ = "Channel: " + v0 + " | " + "Is active: " + str(v1) + " | " + "Update interval: " + str(v2)
-            irc.reply(output_, prefixNick=True)
-        SQL = 'SELECT lastknowbug FROM lastknowbug'
-        cursor = self._SQLexec(SQL, -1)
-        lastknowbug_ = "Last know bug in DB is: " + str(cursor[0][0])
-        irc.reply(lastknowbug_, prefixNick=True)
+        if len(cursor) == 0:
+            irc.reply("Registry is empty", prefixNick=True)
+        else:
+            for x in cursor:
+                v0 = x[0]  # channel
+                v1 = x[1]  # isactive
+                v2 = x[2]  # updateinterval
+                output_ = "Channel: " + v0 + " | " + "Is active: " + str(v1) + " | " + "Update interval: " + str(v2)
+                irc.reply(output_, prefixNick=True)
+            SQL = 'SELECT lastknowbug FROM lastknowbug'
+            cursor = self._SQLexec(SQL, -1)
+            lastknowbug_ = "Last know bug in DB is: " + str(cursor[0][0])
+            irc.reply(lastknowbug_, prefixNick=True)
     list = wrap(list)
 
 
