@@ -42,36 +42,39 @@ class FreeBSDbugcatch(callbacks.Plugin):
         return msg
 
     def _catchbug(self, irc, msg):
-        prefixChars = list(conf.supybot.reply.whenAddressedBy.chars())
-        ct = False
-        res = None
-        for x in prefixChars:  # Check user issued commands directly and avoid automatic parsing
-            regex_ = r"^(" + re.escape(x) + r")"
-            try:
-                res = re.search(regex_, msg.args[1])
-            except IndexError:
-                pass
-            if res:
-                ct = True
-
-        if not ct:
+        try: # Test actual input from 'inFilter' contains a IRC message in a channel
+            ircmsg_ = msg.args[1]
             channel = msg.args[0]
-            channlist = list(conf.supybot.plugins.freebsdbugcatch.channels())
-            if channel in channlist:
-                res = re.search('((pr|issue|bug) #(\d+))|((pr|issue|bug)#(\d+))|((pr|issue|bug)(\d+))|((pr|issue|bug) (\d+))', msg.args[1], flags=re.IGNORECASE)
-                bugn = 0
-                result = None
+        except:
+            ircmsg_ = None
 
+        if ircmsg_ is not None:
+            prefixChars = list(conf.supybot.reply.whenAddressedBy.chars())
+            ct = False
+            res = None
+            for x in prefixChars:  # Check user issued commands directly and avoid automatic parsing
+                regex_ = r"^(" + re.escape(x) + r")"
+                res = re.search(regex_, ircmsg_)
                 if res:
-                    reslenght = res.groups().__len__()
-                    for x in range(0, reslenght):
-                        val = res.groups()[x]
-                        try:
-                            bugn = str(int(val))
-                            if bugn != 0:
-                                self._returnbug(irc, msg, bugn, "")
-                        except:
-                            pass
+                    ct = True
+
+            if not ct:
+                channlist = list(conf.supybot.plugins.freebsdbugcatch.channels())
+                if channel in channlist:
+                    res = re.search('((pr|issue|bug) #(\d+))|((pr|issue|bug)#(\d+))|((pr|issue|bug)(\d+))|((pr|issue|bug) (\d+))', ircmsg_, flags=re.IGNORECASE)
+                    bugn = 0
+                    result = None
+
+                    if res:
+                        reslenght = res.groups().__len__()
+                        for x in range(0, reslenght):
+                            val = res.groups()[x]
+                            try:
+                                bugn = str(int(val)) # Preferable find a way to test 'val' is digit instead of using try/except
+                                if bugn != 0:
+                                    self._returnbug(irc, msg, bugn, "")
+                            except:
+                                pass
 
     def _returnbug(self, irc, msg, bugn, nickprefix):
         result = nickprefix
