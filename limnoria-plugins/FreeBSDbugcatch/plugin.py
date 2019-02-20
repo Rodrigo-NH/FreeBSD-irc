@@ -102,7 +102,7 @@ class FreeBSDbugcatch(callbacks.Plugin):
         nick_ = None
 
         # Syntax check
-        res = re.match("(\d+)( @(\w+))?\Z", text)
+        res = re.match("(\d+)( @(\w+))?( .*.)?\Z", text)
         if res is not None:
             res = res.groups()
             bugid_ = res[0]
