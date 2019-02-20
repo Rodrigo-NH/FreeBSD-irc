@@ -67,14 +67,16 @@ class FreeBSDman(callbacks.Plugin):
         command_ = None
         nick_ = None
         section_ = None
+        txt_ = None
 
         # Syntax validation
-        res = re.match("([!-'*-~]+)(\((\d+)\))?( @(\w+))?\Z", cmd, flags=re.IGNORECASE)
+        res = re.match("([!-'*-~]+)(\((\d+)\))?( @(\w+))?( @(\w+))?( .*.)?\Z", cmd, flags=re.IGNORECASE)
         if res is not None:
             res = res.groups()
             command_ = res[0]
             section_ = res[2]
             nick_ = res[4]
+            #txt_ = res[7] #Can be used if needed (arbitrary text after regular command options)
             if nick_ is not None:
                 if not nick_ in irc.state.channels[msg.args[0]].users:  # Check nick is in channel
                     uoption_ = "nonick"
@@ -108,6 +110,7 @@ class FreeBSDman(callbacks.Plugin):
                         an = nick_ + ": "
                     else:
                         an = ""
+
                     queryresult = an + str(command_).lower() + sektion + " - " + self._getmandesc(webData_) + urldir
                     irc.reply(queryresult, prefixNick=False)
             except:
