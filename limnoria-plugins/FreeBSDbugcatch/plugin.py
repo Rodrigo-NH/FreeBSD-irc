@@ -61,7 +61,7 @@ class FreeBSDbugcatch(callbacks.Plugin):
             if not ct:
                 channlist = list(conf.supybot.plugins.freebsdbugcatch.channels())
                 if channel in channlist:
-                    res = re.search('((pr|issue|bug) #(\d+))|((pr|issue|bug)#(\d+))|((pr|issue|bug)(\d+))|((pr|issue|bug) (\d+))', ircmsg_, flags=re.IGNORECASE)
+                    res = re.search('(( pr| issue| bug) #(\w+))|(( pr| issue| bug)#(\w+))|(( pr| issue| bug)(\w+))|(( pr| issue | bug) (\w+))', ircmsg_, flags=re.IGNORECASE)
                     bugn = 0
                     result = None
 
