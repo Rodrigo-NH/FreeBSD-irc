@@ -25,7 +25,7 @@ except ImportError:
     _ = lambda x: x
 
 class FreeBSDbugcatch(callbacks.Plugin):
-    """Catch or direct command PR ID on IRC talk and return Summary + Link"""
+    """Catch PR ID on IRC talk and return Summary + Link or direct command call"""
 
     def __init__(self, irc):
         self.__parent = super(FreeBSDbugcatch, self)

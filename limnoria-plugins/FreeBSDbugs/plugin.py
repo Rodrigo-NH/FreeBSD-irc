@@ -215,7 +215,10 @@ class FreeBSDbugs(callbacks.Plugin):
         return res
 
     def add(self, irc, msg, args, channel, updateInterval):
-        """Add channel to receive NEW bugs notices."""
+        """[#channel] [check_interval]
+
+        Add [#channel] to receive updates in [check_interval] in seconds. [check_interval] must be between 60 and 600.
+        """
         res = self._checkDBhasChannel(channel)
         if res is True:
             irc.reply("Channel exist in database.", prefixNick=True)
@@ -242,7 +245,10 @@ class FreeBSDbugs(callbacks.Plugin):
     add = wrap(add, ['inChannel', 'int'])
 
     def remove(self, irc, msg, args, channel):
-        """Remove channel that receives NEW bugs notices."""
+        """[#channel]
+
+        Remove [#channel] from the Database.
+        """
         res = self._checkDBhasChannel(channel)
         if res is True:
             SQL = 'DELETE FROM registry WHERE channel = ?'
@@ -261,7 +267,10 @@ class FreeBSDbugs(callbacks.Plugin):
     remove = wrap(remove, ['somethingWithoutSpaces'])
 
     def setinactive(self, irc, msg, args, channel):
-        """Set inactive register to channel stored in DB."""
+        """[#channel]
+
+        Set [#channel] inactive to receive bug updates but doesn't erase channel from the database.
+        """
         res = self._checkDBhasChannel(channel)
         if res is True:
             SQL = 'UPDATE registry SET isActive = ? WHERE channel = ?'
@@ -279,7 +288,10 @@ class FreeBSDbugs(callbacks.Plugin):
     setinactive = wrap(setinactive, ['somethingWithoutSpaces'])
 
     def setactive(self, irc, msg, args, channel):
-        """Set active register to channel stored in DB."""
+        """[#channel]
+
+        Set [#channel] active to receive bug updates. Channel receives the 'active' bit automatically when added (the freebsdbugs add command).
+        """
         res = self._checkDBhasChannel(channel)
         if res is True:
             SQL = 'UPDATE registry SET isActive = ? WHERE channel = ?'
@@ -301,7 +313,10 @@ class FreeBSDbugs(callbacks.Plugin):
     setactive = wrap(setactive, ['somethingWithoutSpaces'])
 
     def setinterval(self, irc, msg, args, channel, updateInterval):
-        """Change update interval for channel."""
+        """[#channel] [check_interval]
+
+        Change actual [#channel] [check_interval] value in seconds. [check_interval] must be between 60 and 600.
+        """
         res = self._checkDBhasChannel(channel)
         if res is True:
             if updateInterval < 60 or updateInterval > 600:
@@ -322,7 +337,7 @@ class FreeBSDbugs(callbacks.Plugin):
     setinterval = wrap(setinterval, ['somethingWithoutSpaces', 'int'])
 
     def list(self, irc, msg, args):
-        """List registered channels and last know bugzilla bug in DB"""
+        """: List registered channels and last know bugzilla bug in DB"""
         SQL = 'SELECT * FROM registry'
         cursor = self._SQLexec(SQL, -1)
         if len(cursor) == 0:

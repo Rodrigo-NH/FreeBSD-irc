@@ -1,21 +1,32 @@
-Monitor bugs.freebsd.org/bugzilla/ and echo new PR entries to registered channels
+# FreeBSDbugs
+Limnoria plugin that monitor bugs.freebsd.org/bugzilla/ and echo new PR entries to registered channels.
+Once loaded the plugin creates DB file 'freebsdbugs.db' under limnoria's /data folder.
+Bot must be in the channel to be able to send bug notices.
 
-Load plugin: load freebsdbugs
+#### Plugin Commands
+##### add
+freebsdbugs add [#channel] [check_interval]
+Add [#channel] to receive updates in [check_interval] in seconds. [check_interval] must be between 60 and 600.
 
-Commands: 'add', 'remove', 'setactive', 'setinactive', 'setinterval', 'list'
+#### list
+freebsdbugs list
+List registered channels and last know bugzilla bug in DB
 
-Examples:
+#### setinterval
+freebsdbugs setinterval [#channel] [check_interval]
+Change actual [#channel] [check_interval] value in seconds. [check_interval] must be between 60 and 600.
 
-Adds a new channel: freebsdbugs add #somechannel 15
+#### setactive
+freebsdbugs setactive [#channel]
+Set [#channel] active to receive bug updates. Channel receives the 'active' bit automatically when added (the freebsdbugs add command).
 
-*15(seconds) -> Interval that plugin checks for new PRs
+#### setinactive
+freebsdbugs setinactive [#channel]
+Set [#channel] inactive to receive bug updates but doesn't erase channel from the database.
+#### remove
+freebsdbugs remove [#channel]
+Remove [#channel] from the Database.
 
-Remove channel: freebsdbugs remove #somechannel
 
-Sets channel active flag: freebsdbugs setactive #somechannel
 
-Sets channel inactive flag: freebsdbugs setinactive #somechannel
-
-Change channel update interval(seconds): freebsdbugs setinterval #somechannel 60
-
-List registered channels and last know bug in DB: freebsdbugs list
+[![N|Solid](http://onda.qsl.br/wp-content/uploads/2019/05/bsdpower.png)](https://www.freebsd.org/)
