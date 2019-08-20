@@ -21,4 +21,7 @@ The automatic functionality will work for registered channels. Use the following
 
 conf.supybot.plugins.freebsdbugcatch.channels
 
+#### Help improving this plugin. Issues welcome!
+
+
 [![N|Solid](http://onda.qsl.br/wp-content/uploads/2019/05/bsdpower.png)](https://www.freebsd.org/)

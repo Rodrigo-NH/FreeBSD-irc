@@ -29,5 +29,7 @@ Append result replied on channel with 'SomeNick' nick
 
 Same as above but also define wanted section
 
+#### Help improving this plugin. Issues welcome!
+
 
 [![N|Solid](http://onda.qsl.br/wp-content/uploads/2019/05/bsdpower.png)](https://www.freebsd.org/)

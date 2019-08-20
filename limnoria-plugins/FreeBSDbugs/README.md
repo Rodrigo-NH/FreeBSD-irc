@@ -34,6 +34,8 @@ freebsdbugs remove [#channel]
 
 Remove [#channel] from the Database.
 
+#### Help improving this plugin. Issues welcome!
+
 
 
 [![N|Solid](http://onda.qsl.br/wp-content/uploads/2019/05/bsdpower.png)](https://www.freebsd.org/)
