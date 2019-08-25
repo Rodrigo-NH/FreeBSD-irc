@@ -32,8 +32,7 @@ FreeBSDbugs = conf.registerPlugin('FreeBSDbugs')
 # This is where your configuration variables (if any) should go.  For example:
 # conf.registerGlobalValue(FreeBSDbugs, 'someConfigVariableName',
 #     registry.Boolean(False, _("""Help for someConfigVariableName.""")))
-conf.registerGlobalValue(FreeBSDbugs, 'TestingConfig',
-    registry.Boolean(True, _("""Just a testing config.""")))
+conf.registerGlobalValue(FreeBSDbugs, 'UserAgent', registry.String("", _("""set HTTP header's user agent""")))
 
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:

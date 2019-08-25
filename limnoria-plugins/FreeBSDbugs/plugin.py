@@ -10,7 +10,7 @@
 ###
 
 
-from supybot import utils, plugins, ircutils, callbacks, ircmsgs
+from supybot import utils, plugins, ircutils, callbacks, ircmsgs, conf
 from supybot.commands import *
 import os, sqlite3, threading, time
 from lxml.html import fromstring
@@ -138,6 +138,7 @@ class FreeBSDbugs(callbacks.Plugin):
             url = 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=' + str(maxbug)
             try:
                 res = self._getPageTitle(url)
+                time.sleep(1) # Be nice
                 pagedesc = res[0]
                 if pagedesc == "Missing Bug ID":
                     ct1 = int((maxbug - minbug) / 2)
@@ -150,7 +151,7 @@ class FreeBSDbugs(callbacks.Plugin):
                     self.lastknowbug = maxbug
                     notAlready = False
             except:
-                time.sleep(3)
+                time.sleep(10)
 
         if not notAlready:
             SQL = 'UPDATE lastknowbug SET lastknowbug = ?'
@@ -208,7 +209,11 @@ class FreeBSDbugs(callbacks.Plugin):
             return True
 
     def _getPageTitle(self, url):
-        page = requests.get(url, )
+        header = None
+        UserAgent = conf.supybot.plugins.FreeBSDbugs.UserAgent()
+        if UserAgent is not "":
+            header = {'User-Agent': UserAgent}
+        page = requests.get(url, timeout=5, headers=header )
         sc = page.status_code
         tree = fromstring(page.content)
         pagedesc = tree.findtext('.//title')
