@@ -118,6 +118,7 @@ class FreeBSDbugs(callbacks.Plugin):
                 self.lastknowbug = lastseen
             except:
                 lastseen -= 1
+                reachend = 1
                 time.sleep(3)
 
         self.lock.acquire()
