@@ -3,6 +3,7 @@ Limnoria plugin that monitors https://bugs.freebsd.org/bugzilla/ and echo new PR
 Once loaded the plugin creates a DB file 'freebsdbugs.db' under limnoria's /data folder.
 Bot must be in the channel to be able to send the bug notices.
 
+
 #### Plugin Commands
 ##### add
 freebsdbugs add [#channel] [check_interval]
@@ -33,6 +34,17 @@ Set [#channel] inactive to receive bug updates but doesn't erase channel from th
 freebsdbugs remove [#channel]
 
 Remove [#channel] from the Database.
+
+#### Setting user agent
+
+Header's user agent of HTTP requests made by the plugin can be set by adjusting the config paramater 'conf.supybot.plugins.FreeBSDbugs.UserAgent'.
+
+Example:
+* Set your own user agent:
+'config conf.supybot.plugins.FreeBSDbugs.UserAgent "Mozilla/5.0 (compatible; MyApp/1.0; +https://mysite.com/myapp)"
+
+* Back to default value:
+'config conf.supybot.plugins.FreeBSDbugs.UserAgent ""'
 
 #### Help improving this plugin. Issues welcome!
 
