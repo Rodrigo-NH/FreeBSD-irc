@@ -5,7 +5,7 @@
 #
 ###
 
-from supybot import utils, plugins, ircutils, callbacks, ircmsgs
+from supybot import utils, plugins, ircutils, callbacks, ircmsgs, conf
 from supybot.commands import *
 import threading, time, io, os
 from pathlib import Path
@@ -41,6 +41,8 @@ class Loglogger(callbacks.Plugin):
         g.start()
 
     def _getlogs(self, irc):
+        for channel in irc.state.channels:
+            print(channel)
         while self.loopthread:
             logfile_ = io.open(self.logpath_, mode="r", encoding="utf-8")
             count = 0
@@ -49,7 +51,12 @@ class Loglogger(callbacks.Plugin):
                 if count > self.lastknowline:
                     iline_ = line.rstrip("\n")
                     if 'FLUSHERS FLUSHED' not in iline_.upper():
-                        irc.queueMsg(ircmsgs.privmsg("#freebsd-labs", iline_))
+                        while True:
+                            if conf.supybot.plugins.Loglogger.Channel() not in irc.state.channels:
+                                time.sleep(5)
+                            else:
+                                irc.queueMsg(ircmsgs.privmsg(conf.supybot.plugins.Loglogger.Channel(), iline_))
+                                break
                     self.lastknowline += 1
             logfile_.close()
             time.sleep(5)
