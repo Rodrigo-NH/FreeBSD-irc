@@ -41,8 +41,6 @@ class Loglogger(callbacks.Plugin):
         g.start()
 
     def _getlogs(self, irc):
-        for channel in irc.state.channels:
-            print(channel)
         while self.loopthread:
             logfile_ = io.open(self.logpath_, mode="r", encoding="utf-8")
             count = 0
