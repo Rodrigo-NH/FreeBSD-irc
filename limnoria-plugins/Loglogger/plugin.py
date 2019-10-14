@@ -49,12 +49,14 @@ class Loglogger(callbacks.Plugin):
                 if count > self.lastknowline:
                     iline_ = line.rstrip("\n")
                     if 'FLUSHERS FLUSHED' not in iline_.upper():
-                        while True:
+                        holdCheck = True
+                        while holdCheck:
                             if conf.supybot.plugins.Loglogger.Channel() not in irc.state.channels:
                                 time.sleep(5)
                             else:
                                 irc.queueMsg(ircmsgs.privmsg(conf.supybot.plugins.Loglogger.Channel(), iline_))
-                                break
+                                time.sleep(0.3)
+                                holdCheck = False
                     self.lastknowline += 1
             logfile_.close()
             time.sleep(5)
