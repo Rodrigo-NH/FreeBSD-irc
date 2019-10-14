@@ -106,10 +106,11 @@ class FreeBSDbugs(callbacks.Plugin):
             url = 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=' + str(lastseen)
             try:
                 res = self._getPageTitle(url)
-                pagedesc = res[0]
+                pagedesc = res[0].split(b'\xe2\x80\x93'.decode('utf-8'),1)[1].strip()
                 sc = res[1]
                 if pagedesc != "Missing Bug ID" and str(sc) == '200':
-                    notice = "#" + pagedesc + " " + "https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=" + str(lastseen) + " (NEW)"
+                    notice = "["+res[2]+"/"+res[3]+"] "+pagedesc+" "+"https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=" + str(lastseen) + \
+                        " "+"(NEW)"
                     if self.loopthread:
                         irc.queueMsg(ircmsgs.privmsg(v0, notice))
                 else:
@@ -217,7 +218,14 @@ class FreeBSDbugs(callbacks.Plugin):
         sc = page.status_code
         tree = fromstring(page.content)
         pagedesc = tree.findtext('.//title')
-        res = (pagedesc, sc)
+        product = ""
+        component = ""
+        try:
+            product = tree.get_element_by_id('field_container_product').text_content().partition('\n')[0].replace('\n',' ').replace('\r',' ').strip()
+            component = tree.get_element_by_id('field_container_component').text_content().partition('\n')[0].replace('\n',' ').replace('\r',' ').strip()
+        except:
+            pass
+        res = (pagedesc, sc, product, component)
         return res
 
     def add(self, irc, msg, args, channel, updateInterval):
