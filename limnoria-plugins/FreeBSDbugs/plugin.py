@@ -103,12 +103,24 @@ class FreeBSDbugs(callbacks.Plugin):
         reachend = 0
         while reachend == 0 and self.loopthread == True:
             lastseen += 1
-            url = 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=' + str(lastseen)
             try:
-                res = self._getPageTitle(url)
-                pagedesc = res[0]
-                sc = res[1]
-                if pagedesc != "Missing Bug ID" and str(sc) == '200':
+                cont = False
+                tries = 0
+                trycount = 3 # Number of subsequent bugzilla IDs to check if still is "Missing Bug ID" (fix bug id=264907)
+                while tries < trycount:
+                    time.sleep(1)
+                    url = 'https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=' + str(lastseen+tries)
+                    res = self._getPageTitle(url)
+                    pagedesc = res[0]
+                    sc = res[1]
+                    if pagedesc != "Missing Bug ID" and str(sc) == '200':
+                        cont = True
+                        break
+                    else:
+                        tries += 1
+
+                if cont:
+                    lastseen += tries
                     notice = "#" + pagedesc + " " + "https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=" + str(lastseen) + " (NEW)"
                     if self.loopthread:
                         irc.queueMsg(ircmsgs.privmsg(v0, notice))
@@ -211,7 +223,7 @@ class FreeBSDbugs(callbacks.Plugin):
     def _getPageTitle(self, url):
         header = None
         UserAgent = conf.supybot.plugins.FreeBSDbugs.UserAgent()
-        if UserAgent is not "":
+        if UserAgent != "":
             header = {'User-Agent': UserAgent}
         page = requests.get(url, timeout=5, headers=header )
         sc = page.status_code
